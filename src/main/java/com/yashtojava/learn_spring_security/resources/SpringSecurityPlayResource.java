@@ -8,9 +8,10 @@ import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 public class SpringSecurityPlayResource {
+
 	@GetMapping("/csrf-token")
-	public CsrfToken retriveCsrfToken(HttpServletRequest request) {
+	public CsrfToken retrieveCsrfToken(HttpServletRequest request) {
 		return (CsrfToken) request.getAttribute("_csrf");
 	}
+
 }
-//// get csrf token

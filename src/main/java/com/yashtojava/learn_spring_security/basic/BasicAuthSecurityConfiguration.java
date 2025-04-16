@@ -8,37 +8,63 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.jdbc.JdbcDaoImpl;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+@EnableMethodSecurity(jsr250Enabled = true, securedEnabled = true)
 public class BasicAuthSecurityConfiguration {
+
 	@Bean
-	SecurityFilterChain SecurityFilterChain(HttpSecurity http) throws Exception {
-		http.authorizeHttpRequests((requests) -> requests.anyRequest().authenticated());
-		// http.formLogin(withDefaults());
-		http.sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
+		http.authorizeHttpRequests(
+				auth -> {
+					auth
+							.anyRequest().authenticated();
+				});
+
+		http.sessionManagement(
+				session -> session.sessionCreationPolicy(
+						SessionCreationPolicy.STATELESS));
+
+		// http.formLogin();
 		http.httpBasic(withDefaults());
-		http.csrf().disable();
-		http.headers().frameOptions().sameOrigin();
+
+		http.csrf(csrf -> csrf.disable());
+
+		// http.csrf(AbstractHttpConfigurer::disable);
+
+		http.headers(headers -> headers.frameOptions(frameOptionsConfig -> frameOptionsConfig.disable()));
+
+		// http.headers(headers ->
+		// headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
+
 		return http.build();
 	}
 
-	// in memory authentication(user details service)
-
 	// @Bean
-	// public UserDetailsService userDetailsService() {
-	// var user =
-	// User.withUsername("yash").password("{noop}yash123").roles("USER").build();
-	// var admin =
-	// User.withUsername("ayush").password("{noop}ayush123").roles("ADMIN").build();
-	// return new InMemoryUserDetailsManager(user, admin);
+	// public UserDetailsService userDetailService() {
 	//
+	// var user = User.withUsername("yash")
+	// .password("{noop}dummy")
+	// .roles("USER")
+	// .build();
+	//
+	//
+	// var admin = User.withUsername("admin")
+	// .password("{noop}dummy")
+	// .roles("ADMIN")
+	// .build();
+	//
+	// return new InMemoryUserDetailsManager(user, admin);
 	// }
 
 	@Bean
@@ -50,15 +76,32 @@ public class BasicAuthSecurityConfiguration {
 	}
 
 	@Bean
-	public UserDetailsService userDetailsService(DataSource dataSource) {
-		var user = User.withUsername("yash").password("{noop}yash123").roles("USER").build();
-		var admin = User.withUsername("ayush").password("{noop}ayush123").roles("ADMIN").build();
-		var JdbcUserDetailsManager = new JdbcUserDetailsManager(dataSource);
-		JdbcUserDetailsManager.createUser(user);
-		JdbcUserDetailsManager.createUser(admin);
+	public UserDetailsService userDetailService(DataSource dataSource) {
 
-		return JdbcUserDetailsManager;
+		var user = User.withUsername("yash")
+				// .password("{noop}dummy")
+				.password("yash123")
+				.passwordEncoder(str -> passwordEncoder().encode(str))
+				.roles("USER")
+				.build();
 
+		var admin = User.withUsername("ayush")
+				// .password("{noop}dummy")
+				.password("ayush123")
+				.passwordEncoder(str -> passwordEncoder().encode(str))
+				.roles("ADMIN", "USER")
+				.build();
+
+		var jdbcUserDetailsManager = new JdbcUserDetailsManager(dataSource);
+		jdbcUserDetailsManager.createUser(user);
+		jdbcUserDetailsManager.createUser(admin);
+
+		return jdbcUserDetailsManager;
+	}
+
+	@Bean
+	public BCryptPasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
 	}
 
 }
